@@ -79,7 +79,7 @@
   let dogIndex = 0;
   let anvils = [];
   let gameSpeed = 5;
-  let squareSpeed = 5;
+  let squareSpeed = 2;
   let leftPressed = false;
   let rightPressed = false;
   let gameOver = false;
@@ -133,24 +133,30 @@
     }
   }
 
-  function adjustSpawnSpeed(elapsedTime) {
-    if (elapsedTime >= 60) {
-      spawnInterval = 2000; // After 60 seconds, spawn one anvil every 2 seconds
-      maxAnvils = 6; // Add one more anvil at a time
-    } else if (elapsedTime >= 40) {
-      squareSpeed = 10; // 100% faster
-      spawnInterval = Math.max(2000, spawnInterval - 200); // Increase spawn rate gradually
-    } else if (elapsedTime >= 30) {
-      squareSpeed = 8; // 75% faster
-      spawnInterval = Math.max(2500, spawnInterval - 300); // Increase spawn rate
-    } else if (elapsedTime >= 20) {
-      squareSpeed = 6; // 50% faster
-      spawnInterval = Math.max(3000, spawnInterval - 400); // Increase spawn rate
-    } else if (elapsedTime >= 10) {
-      squareSpeed = 5; // 25% faster
-      spawnInterval = Math.max(3500, spawnInterval - 500); // Increase spawn rate
-    }
-  }
+ function adjustSpawnSpeed(elapsedTime) {
+  if (elapsedTime >= 140) {  // After 120 seconds
+    spawnInterval = 2000; // Spawn one anvil every 2 seconds
+    maxAnvils = Math.min(maxAnvils + 3, 20);  // Gradually increase maxAnvils, up to a maximum of 10
+  } else if (elapsedTime >= 120) {
+    spawnInterval = 2000; // After 60 seconds, spawn one anvil every 2 seconds
+    maxAnvils = Math.min(maxAnvils + 1, 10)
+  } else if (elapsedTime >= 60) {
+    spawnInterval = 2000; // After 60 seconds, spawn one anvil every 2 seconds
+    maxAnvils = 8; // Add one more anvil at a time
+  } else if (elapsedTime >= 40) {
+    squareSpeed = 4; // 100% faster
+    spawnInterval = Math.max(2000, spawnInterval - 200); // Increase spawn rate gradually
+  } else if (elapsedTime >= 30) {
+    squareSpeed = 3.5; // 75% faster
+    spawnInterval = Math.max(2500, spawnInterval - 300); // Increase spawn rate
+  } else if (elapsedTime >= 20) {
+    squareSpeed = 3; // 50% faster
+    spawnInterval = Math.max(3000, spawnInterval - 400); // Increase spawn rate
+  } else if (elapsedTime >= 10) {
+    squareSpeed = 2.5; // 25% faster
+    spawnInterval = Math.max(3500, spawnInterval - 500); // Increase spawn rate
+	}
+}
 
   function gameLoop(currentTime) {
     if (gameOver) return;
@@ -215,18 +221,28 @@
     requestAnimationFrame(gameLoop);
   });
 
-  // Restart the game when the restart button is clicked
-  document.getElementById('restartButton').addEventListener('click', () => {
-    gameOver = false;
-    dogX = canvas.width / 2 - 50;
-    dogY = canvas.height - 150;
-    anvils = [];
-    startTime = performance.now();
-    lastSpawnTime = 0;
-    document.getElementById('restartButton').style.display = 'none'; // Hide restart button
-    document.getElementById('startButton').style.display = 'none'; // Hide start button
-    requestAnimationFrame(gameLoop);
-  });
+ // Restart the game when the restart button is clicked
+document.getElementById('restartButton').addEventListener('click', () => {
+  gameOver = false;
+  dogX = canvas.width / 2 - 50;
+  dogY = canvas.height - 150;
+  anvils = [];
+  startTime = performance.now();
+  lastSpawnTime = 0;
+  leftPressed = false;
+  rightPressed = false;
+
+  // Reset anvil speed and count
+  squareSpeed = 2;      // Reset to original speed
+  spawnInterval = 1000; // Reset spawn rate
+  maxAnvils = 5;        // Reset max anvil count
+
+  document.getElementById('restartButton').style.display = 'none';
+  document.getElementById('startButton').style.display = 'none';
+
+  requestAnimationFrame(gameLoop);
+});
+
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft') {
