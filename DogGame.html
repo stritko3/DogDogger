@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dog Dodger</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-image: url('Background.jpg'); /* Use the background image */
+      background-size: cover; /* Ensure it covers the entire screen */
+      background-position: center; /* Center the image */
+    }
+
+    #gameCanvas {
+      display: block;
+      margin: 0 auto;
+      background-color: rgba(240, 240, 240, 0.5); /* Semi-transparent background for the canvas */
+    }
+
+    #timer {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 30px;
+      color: red;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Styling for the start and restart buttons */
+    #startButton, #restartButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 40px;
+      font-size: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      display: none; /* Initially hide the buttons */
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<div id="timer">0</div>
+
+<!-- Start Button -->
+<button id="startButton">Start Game</button>
+
+<!-- Restart Button -->
+<button id="restartButton">Restart Game</button>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Dog sprite images in the same folder as the HTML
+  const dogImages = [
+    new Image(), new Image(), new Image(), new Image()
+  ];
+  dogImages[0].src = 'Dog1.png'; // Dog sprite 1
+  dogImages[1].src = 'Dog2.png'; // Dog sprite 2
+  dogImages[2].src = 'Dog3.png'; // Dog sprite 3
+  dogImages[3].src = 'Dog4.png'; // Dog sprite 4
+
+  const anvilImage = new Image();
+  anvilImage.src = 'Anvil.png'; // Anvil image
+
+  let dogX = canvas.width / 2 - 50;
+  let dogY = canvas.height - 150; // Adjusted for larger size
+  let dogIndex = 0;
+  let anvils = [];
+  let gameSpeed = 5;
+  let squareSpeed = 2;
+  let leftPressed = false;
+  let rightPressed = false;
+  let gameOver = false;
+
+  let lastUpdateTime = 0; // For controlling the animation speed
+  let startTime = performance.now(); // Use performance.now() for a more accurate start time
+  let spawnInterval = 1000; // Initial spawn interval (in ms)
+  let lastSpawnTime = 0; // To track time of last anvil spawn
+  let maxAnvils = 5; // Maximum number of anvils on the screen at once
+
+  function drawDog() {
+    ctx.clearRect(dogX, dogY, 100, 100); // Clear previous dog image
+
+    // Flip image logic: If moving right, flip horizontally
+    const flip = rightPressed ? -1 : 1;
+
+    ctx.save(); // Save the current canvas state
+    ctx.scale(flip, 1); // Flip horizontally when moving right
+    ctx.drawImage(dogImages[dogIndex], (flip === -1 ? -dogX - 100 : dogX), dogY, 100, 100); // 2x the size
+    ctx.restore(); // Restore the canvas to its original state
+  }
+
+  function drawAnvil(anvil) {
+    ctx.drawImage(anvilImage, anvil.x, anvil.y, 50, 50); // Draw Anvil
+  }
+
+  function moveAnvils() {
+    for (let i = 0; i < anvils.length; i++) {
+      anvils[i].y += squareSpeed;
+
+      // Check for collision with the dog
+      if (anvils[i].y + 50 > dogY && anvils[i].y < dogY + 100 && 
+          anvils[i].x + 50 > dogX && anvils[i].x < dogX + 100) {
+        gameOver = true; // Collision detected
+        alert("Game Over!");
+        document.getElementById('restartButton').style.display = 'block'; // Show restart button
+        break; // End the game after collision
+      }
+
+      if (anvils[i].y > canvas.height) {
+        anvils.splice(i, 1);
+        i--;
+      }
+    }
+  }
+
+  function createAnvil() {
+    if (anvils.length < maxAnvils) { // Ensure only up to maxAnvils are on screen at once
+      const x = Math.random() * (canvas.width - 50);
+      anvils.push({ x, y: -50 });
+    }
+  }
+
+ function adjustSpawnSpeed(elapsedTime) {
+  if (elapsedTime >= 140) {  // After 120 seconds
+    spawnInterval = 2000; // Spawn one anvil every 2 seconds
+    maxAnvils = Math.min(maxAnvils + 3, 20);  // Gradually increase maxAnvils, up to a maximum of 10
+  } else if (elapsedTime >= 120) {
+    spawnInterval = 2000; // After 60 seconds, spawn one anvil every 2 seconds
+    maxAnvils = Math.min(maxAnvils + 1, 10)
+  } else if (elapsedTime >= 60) {
+    spawnInterval = 2000; // After 60 seconds, spawn one anvil every 2 seconds
+    maxAnvils = 8; // Add one more anvil at a time
+  } else if (elapsedTime >= 40) {
+    squareSpeed = 4; // 100% faster
+    spawnInterval = Math.max(2000, spawnInterval - 200); // Increase spawn rate gradually
+  } else if (elapsedTime >= 30) {
+    squareSpeed = 3.5; // 75% faster
+    spawnInterval = Math.max(2500, spawnInterval - 300); // Increase spawn rate
+  } else if (elapsedTime >= 20) {
+    squareSpeed = 3; // 50% faster
+    spawnInterval = Math.max(3000, spawnInterval - 400); // Increase spawn rate
+  } else if (elapsedTime >= 10) {
+    squareSpeed = 2.5; // 25% faster
+    spawnInterval = Math.max(3500, spawnInterval - 500); // Increase spawn rate
+	}
+}
+
+  function gameLoop(currentTime) {
+    if (gameOver) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Calculate elapsed time
+    const elapsedTime = (currentTime - startTime) / 1000; // Time in seconds
+
+    // Adjust spawn rate and speed based on time elapsed
+    adjustSpawnSpeed(elapsedTime);
+
+    // Update position based on user input
+    if (leftPressed && dogX > 0) {
+      dogX -= 5;
+    }
+    if (rightPressed && dogX < canvas.width - 100) { // Adjusted for 2x size
+      dogX += 5;
+    }
+
+    // Update the dog sprite for walking animation only when moving
+    if (leftPressed || rightPressed) {
+      // Check if enough time has passed to update the animation frame
+      if (currentTime - lastUpdateTime > 100) { // Update every 100ms
+        dogIndex = (dogIndex + 1) % 4; // Cycle through the walking sprites
+        lastUpdateTime = currentTime; // Reset the last update time
+      }
+    } else {
+      dogIndex = 0; // Show the idle sprite (Dog1) when not moving
+    }
+
+    drawDog();
+
+    for (let i = 0; i < anvils.length; i++) {
+      drawAnvil(anvils[i]);
+    }
+
+    moveAnvils();
+
+    // Spawn anvils based on adjusted interval, but only if enough time has passed
+    if (currentTime - lastSpawnTime > spawnInterval / 1000) {
+      createAnvil();
+      lastSpawnTime = currentTime;
+    }
+
+    // Update and display timer
+    const secondsElapsed = Math.floor(elapsedTime);
+    document.getElementById('timer').textContent = secondsElapsed;
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  // Start the game when the start button is clicked
+  document.getElementById('startButton').addEventListener('click', () => {
+    gameOver = false;
+    dogX = canvas.width / 2 - 50;
+    dogY = canvas.height - 150;
+    anvils = [];
+    startTime = performance.now();
+    lastSpawnTime = 0;
+    document.getElementById('startButton').style.display = 'none'; // Hide start button
+    requestAnimationFrame(gameLoop);
+  });
+
+ // Restart the game when the restart button is clicked
+document.getElementById('restartButton').addEventListener('click', () => {
+  gameOver = false;
+  dogX = canvas.width / 2 - 50;
+  dogY = canvas.height - 150;
+  anvils = [];
+  startTime = performance.now();
+  lastSpawnTime = 0;
+  leftPressed = false;
+  rightPressed = false;
+
+  // Reset anvil speed and count
+  squareSpeed = 2;      // Reset to original speed
+  spawnInterval = 1000; // Reset spawn rate
+  maxAnvils = 5;        // Reset max anvil count
+
+  document.getElementById('restartButton').style.display = 'none';
+  document.getElementById('startButton').style.display = 'none';
+
+  requestAnimationFrame(gameLoop);
+});
+
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowLeft') {
+      leftPressed = true;
+    }
+    if (event.key === 'ArrowRight') {
+      rightPressed = true;
+    }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    if (event.key === 'ArrowLeft') {
+      leftPressed = false;
+    }
+    if (event.key === 'ArrowRight') {
+      rightPressed = false;
+    }
+  });
+
+  // Start the game loop once images are loaded
+  let imagesLoaded = 0;
+  dogImages.forEach((image) => {
+    image.onload = () => {
+      imagesLoaded++;
+      if (imagesLoaded === dogImages.length) {
+        anvilImage.onload = () => {
+          document.getElementById('startButton').style.display = 'block'; // Show start button
+        };
+      }
+    };
+  });
+</script>
+
+</body>
+</html>
