@@ -94,6 +94,28 @@
 
   let barkTimeoutId = null; // To track the next bark timeout
 
+  const maxDiscount = 30; // Maximum discount percentage
+  let discount = 0; // Current discount percentage
+
+  // Function to calculate the discount percentage
+  function calculateDiscount(elapsedTime) {
+    // Calculate the discount (1% every 10 seconds, capped at maxDiscount)
+    return Math.min(Math.floor(elapsedTime / 10), maxDiscount);
+  }
+
+  // Function to get the promo code based on the discount
+  function getPromoCode(discount) {
+    if (discount >= 30) {
+      return "ART30";
+    } else if (discount >= 20) {
+      return "3DPRINT20";
+    } else if (discount >= 10) {
+      return "S3TART10";
+    } else {
+      return null; // No promo code for discounts below 10%
+    }
+  }
+
   // Function to play the bark sound
   function playBarkSound() {
     if (gameOver) return; // Stop barking if the game is over
@@ -133,32 +155,54 @@
     ctx.drawImage(anvilImage, anvil.x, anvil.y, 50, 50); // Draw Anvil
   }
 
-  // Function to move anvils and check for collisions
-  function moveAnvils() {
-    for (let i = 0; i < anvils.length; i++) {
-      anvils[i].y += squareSpeed;
+ // Function to get the promo code and fixed discount message
+function getPromoCodeAndMessage(discount) {
+  if (discount >= 30) {
+    return { promoCode: "ART30", message: "Bravo dobili ste 30% popusta pri nakupu kateregakoli artikla v trgovini Stritart!" };
+  } else if (discount >= 20) {
+    return { promoCode: "3DPRINT20", message: "Bravo dobili ste 20% popusta pri nakupu kateregakoli artikla v trgovini Stritart!" };
+  } else if (discount >= 10) {
+    return { promoCode: "S3TART10", message: "Bravo dobili ste 10% popusta pri nakupu kateregakoli artikla v trgovini Stritart!" };
+  } else {
+    return { promoCode: null, message: "Več sreče prihodnjič" };
+  }
+}
 
-      // Check for collision with the dog
-      if (anvils[i].y + 50 > dogY && anvils[i].y < dogY + 100 &&
-          anvils[i].x + 50 > dogX && anvils[i].x < dogX + 100) {
-        gameOver = true; // Collision detected
-        stopBarking(); // Stop barking when the game is over
+// Function to move anvils and check for collisions
+function moveAnvils() {
+  for (let i = 0; i < anvils.length; i++) {
+    anvils[i].y += squareSpeed;
 
-        // Calculate the discount percentage
-        const elapsedTime = (performance.now() - startTime) / 1000; // Time in seconds
-        const discount = Math.floor(elapsedTime / 10); // 10 seconds = 1%
-        alert(`Bravo dobili ste ${discount}% popusta pri nakupu kateregakoli artikla v trgovini Stritart!`);
+    // Check for collision with the dog
+    if (anvils[i].y + 50 > dogY && anvils[i].y < dogY + 100 &&
+        anvils[i].x + 50 > dogX && anvils[i].x < dogX + 100) {
+      gameOver = true; // Collision detected
+      stopBarking(); // Stop barking when the game is over
 
-        document.getElementById('restartButton').style.display = 'block'; // Show restart button
-        break; // End the game after collision
+      // Calculate the discount percentage
+      const elapsedTime = (performance.now() - startTime) / 1000; // Time in seconds
+      discount = calculateDiscount(elapsedTime); // Get the capped discount
+
+      // Get the promo code and fixed message
+      const { promoCode, message } = getPromoCodeAndMessage(discount);
+
+      // Display the game-over message with the promo code
+      if (promoCode) {
+        alert(`${message}\n\nVaša promo koda je: ${promoCode}`);
+      } else {
+        alert(message);
       }
 
-      if (anvils[i].y > canvas.height) {
-        anvils.splice(i, 1);
-        i--;
-      }
+      document.getElementById('restartButton').style.display = 'block'; // Show restart button
+      break; // End the game after collision
+    }
+
+    if (anvils[i].y > canvas.height) {
+      anvils.splice(i, 1);
+      i--;
     }
   }
+}
 
   // Function to create a new anvil
   function createAnvil() {
@@ -203,6 +247,9 @@
     // Calculate elapsed time
     const elapsedTime = (currentTime - startTime) / 1000; // Time in seconds
 
+    // Calculate the discount percentage
+    discount = calculateDiscount(elapsedTime);
+
     // Adjust spawn rate and speed based on time elapsed
     adjustSpawnSpeed(elapsedTime);
 
@@ -240,7 +287,6 @@
     }
 
     // Update and display timer as a percentage
-    const discount = Math.floor(elapsedTime / 10); // 10 seconds = 1%
     document.getElementById('timer').textContent = `${discount}%`;
 
     requestAnimationFrame(gameLoop);
