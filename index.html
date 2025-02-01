@@ -48,7 +48,7 @@
 <body>
 
 <canvas id="gameCanvas"></canvas>
-<div id="timer">0</div>
+<div id="timer">0%</div>
 
 <!-- Start Button -->
 <button id="startButton">Start Game</button>
@@ -74,6 +74,8 @@
   const anvilImage = new Image();
   anvilImage.src = 'Anvil.png'; // Anvil image
 
+  const barkSound = new Audio('Bark.mp3'); // Bark sound
+
   let dogX = canvas.width / 2 - 50;
   let dogY = canvas.height - 150; // Adjusted for larger size
   let dogIndex = 0;
@@ -90,6 +92,30 @@
   let lastSpawnTime = 0; // To track time of last anvil spawn
   let maxAnvils = 5; // Maximum number of anvils on the screen at once
 
+  let barkTimeoutId = null; // To track the next bark timeout
+
+  // Function to play the bark sound
+  function playBarkSound() {
+    if (gameOver) return; // Stop barking if the game is over
+
+    const barkClone = barkSound.cloneNode(); // Clone the sound to allow overlapping
+    barkClone.playbackRate = Math.random() * (1.5 - 0.5) + 0.5; // Set pitch between 50% (0.5) and 150% (1.5)
+    barkClone.play();
+
+    // Schedule the next bark between 2 to 10 seconds
+    const nextBark = Math.random() * (10000 - 2000) + 2000;
+    barkTimeoutId = setTimeout(playBarkSound, nextBark); // Store the timeout ID
+  }
+
+  // Function to stop barking
+  function stopBarking() {
+    if (barkTimeoutId) {
+      clearTimeout(barkTimeoutId); // Clear the scheduled bark
+      barkTimeoutId = null;
+    }
+  }
+
+  // Function to draw the dog
   function drawDog() {
     ctx.clearRect(dogX, dogY, 100, 100); // Clear previous dog image
 
@@ -102,19 +128,27 @@
     ctx.restore(); // Restore the canvas to its original state
   }
 
+  // Function to draw an anvil
   function drawAnvil(anvil) {
     ctx.drawImage(anvilImage, anvil.x, anvil.y, 50, 50); // Draw Anvil
   }
 
+  // Function to move anvils and check for collisions
   function moveAnvils() {
     for (let i = 0; i < anvils.length; i++) {
       anvils[i].y += squareSpeed;
 
       // Check for collision with the dog
-      if (anvils[i].y + 50 > dogY && anvils[i].y < dogY + 100 && 
+      if (anvils[i].y + 50 > dogY && anvils[i].y < dogY + 100 &&
           anvils[i].x + 50 > dogX && anvils[i].x < dogX + 100) {
         gameOver = true; // Collision detected
-        alert("Game Over!");
+        stopBarking(); // Stop barking when the game is over
+
+        // Calculate the discount percentage
+        const elapsedTime = (performance.now() - startTime) / 1000; // Time in seconds
+        const discount = Math.floor(elapsedTime / 10); // 10 seconds = 1%
+        alert(`Bravo dobili ste ${discount}% popusta pri nakupu kateregakoli artikla v trgovini Stritart!`);
+
         document.getElementById('restartButton').style.display = 'block'; // Show restart button
         break; // End the game after collision
       }
@@ -126,6 +160,7 @@
     }
   }
 
+  // Function to create a new anvil
   function createAnvil() {
     if (anvils.length < maxAnvils) { // Ensure only up to maxAnvils are on screen at once
       const x = Math.random() * (canvas.width - 50);
@@ -133,31 +168,33 @@
     }
   }
 
- function adjustSpawnSpeed(elapsedTime) {
-  if (elapsedTime >= 140) {  // After 120 seconds
-    spawnInterval = 2000; // Spawn one anvil every 2 seconds
-    maxAnvils = Math.min(maxAnvils + 3, 20);  // Gradually increase maxAnvils, up to a maximum of 10
-  } else if (elapsedTime >= 120) {
-    spawnInterval = 2000; // After 60 seconds, spawn one anvil every 2 seconds
-    maxAnvils = Math.min(maxAnvils + 1, 10)
-  } else if (elapsedTime >= 60) {
-    spawnInterval = 2000; // After 60 seconds, spawn one anvil every 2 seconds
-    maxAnvils = 8; // Add one more anvil at a time
-  } else if (elapsedTime >= 40) {
-    squareSpeed = 4; // 100% faster
-    spawnInterval = Math.max(2000, spawnInterval - 200); // Increase spawn rate gradually
-  } else if (elapsedTime >= 30) {
-    squareSpeed = 3.5; // 75% faster
-    spawnInterval = Math.max(2500, spawnInterval - 300); // Increase spawn rate
-  } else if (elapsedTime >= 20) {
-    squareSpeed = 3; // 50% faster
-    spawnInterval = Math.max(3000, spawnInterval - 400); // Increase spawn rate
-  } else if (elapsedTime >= 10) {
-    squareSpeed = 2.5; // 25% faster
-    spawnInterval = Math.max(3500, spawnInterval - 500); // Increase spawn rate
-	}
-}
+  // Function to adjust spawn speed and difficulty over time
+  function adjustSpawnSpeed(elapsedTime) {
+    if (elapsedTime >= 140) {  // After 140 seconds
+      spawnInterval = 2000; // Spawn one anvil every 2 seconds
+      maxAnvils = Math.min(maxAnvils + 3, 20);  // Gradually increase maxAnvils, up to a maximum of 20
+    } else if (elapsedTime >= 120) {
+      spawnInterval = 2000; // After 120 seconds, spawn one anvil every 2 seconds
+      maxAnvils = Math.min(maxAnvils + 1, 10);
+    } else if (elapsedTime >= 60) {
+      spawnInterval = 2000; // After 60 seconds, spawn one anvil every 2 seconds
+      maxAnvils = 8; // Add one more anvil at a time
+    } else if (elapsedTime >= 40) {
+      squareSpeed = 4; // 100% faster
+      spawnInterval = Math.max(2000, spawnInterval - 200); // Increase spawn rate gradually
+    } else if (elapsedTime >= 30) {
+      squareSpeed = 3.5; // 75% faster
+      spawnInterval = Math.max(2500, spawnInterval - 300); // Increase spawn rate
+    } else if (elapsedTime >= 20) {
+      squareSpeed = 3; // 50% faster
+      spawnInterval = Math.max(3000, spawnInterval - 400); // Increase spawn rate
+    } else if (elapsedTime >= 10) {
+      squareSpeed = 2.5; // 25% faster
+      spawnInterval = Math.max(3500, spawnInterval - 500); // Increase spawn rate
+    }
+  }
 
+  // Main game loop
   function gameLoop(currentTime) {
     if (gameOver) return;
 
@@ -202,9 +239,9 @@
       lastSpawnTime = currentTime;
     }
 
-    // Update and display timer
-    const secondsElapsed = Math.floor(elapsedTime);
-    document.getElementById('timer').textContent = secondsElapsed;
+    // Update and display timer as a percentage
+    const discount = Math.floor(elapsedTime / 10); // 10 seconds = 1%
+    document.getElementById('timer').textContent = `${discount}%`;
 
     requestAnimationFrame(gameLoop);
   }
@@ -218,32 +255,34 @@
     startTime = performance.now();
     lastSpawnTime = 0;
     document.getElementById('startButton').style.display = 'none'; // Hide start button
+    playBarkSound(); // Start barking
     requestAnimationFrame(gameLoop);
   });
 
- // Restart the game when the restart button is clicked
-document.getElementById('restartButton').addEventListener('click', () => {
-  gameOver = false;
-  dogX = canvas.width / 2 - 50;
-  dogY = canvas.height - 150;
-  anvils = [];
-  startTime = performance.now();
-  lastSpawnTime = 0;
-  leftPressed = false;
-  rightPressed = false;
+  // Restart the game when the restart button is clicked
+  document.getElementById('restartButton').addEventListener('click', () => {
+    gameOver = false;
+    dogX = canvas.width / 2 - 50;
+    dogY = canvas.height - 150;
+    anvils = [];
+    startTime = performance.now();
+    lastSpawnTime = 0;
+    leftPressed = false;
+    rightPressed = false;
 
-  // Reset anvil speed and count
-  squareSpeed = 2;      // Reset to original speed
-  spawnInterval = 1000; // Reset spawn rate
-  maxAnvils = 5;        // Reset max anvil count
+    // Reset anvil speed and count
+    squareSpeed = 2;      // Reset to original speed
+    spawnInterval = 1000; // Reset spawn rate
+    maxAnvils = 5;        // Reset max anvil count
 
-  document.getElementById('restartButton').style.display = 'none';
-  document.getElementById('startButton').style.display = 'none';
+    document.getElementById('restartButton').style.display = 'none';
+    document.getElementById('startButton').style.display = 'none';
 
-  requestAnimationFrame(gameLoop);
-});
+    playBarkSound(); // Restart barking
+    requestAnimationFrame(gameLoop);
+  });
 
-
+  // Handle keyboard input
   document.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft') {
       leftPressed = true;
@@ -274,23 +313,6 @@ document.getElementById('restartButton').addEventListener('click', () => {
       }
     };
   });
-const barkSound = new Audio('Bark.mp3');
-
-function playBarkSound() {
-  const barkClone = barkSound.cloneNode(); // Clone the sound to allow overlapping
-  barkClone.playbackRate = Math.random() * (1.5 - 0.5) + 0.5; // Set pitch between 50% (0.5) and 150% (1.5)
-  barkClone.play();
-
-  // Schedule the next bark between 2 to 10 seconds
-  const nextBark = Math.random() * (10000 - 2000) + 2000; 
-  setTimeout(playBarkSound, nextBark);
-}
-
-// Start playing barks after the game starts
-document.getElementById('startButton').addEventListener('click', () => {
-  playBarkSound();
-});
-	
 </script>
 
 </body>
